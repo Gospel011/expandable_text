@@ -26,6 +26,7 @@ class ExpandableText extends StatefulWidget {
     this.onPrefixTap,
     this.urlStyle,
     this.buildUrlStyle,
+    this.buildUrl,
     this.onUrlTap,
     this.hashtagStyle,
     this.onHashtagTap,
@@ -42,8 +43,8 @@ class ExpandableText extends StatefulWidget {
     this.animationDuration,
     this.animationCurve,
     this.semanticsLabel,
-  })  : assert(maxLines > 0),
-        super(key: key);
+  }) : assert(maxLines > 0),
+       super(key: key);
 
   final String text;
   final String expandText;
@@ -60,6 +61,7 @@ class ExpandableText extends StatefulWidget {
   final TextStyle? urlStyle;
   final TextStyle? Function(String url)? buildUrlStyle;
   final StringCallback? onUrlTap;
+  final String Function(String url)? buildUrl;
   final TextStyle? hashtagStyle;
   final StringCallback? onHashtagTap;
   final TextStyle? mentionStyle;
@@ -116,8 +118,9 @@ class ExpandableTextState extends State<ExpandableText>
   void dispose() {
     _linkTapGestureRecognizer.dispose();
     _prefixTapGestureRecognizer.dispose();
-    _textSegmentsTapGestureRecognizers
-        .forEach((recognizer) => recognizer.dispose());
+    _textSegmentsTapGestureRecognizers.forEach(
+      (recognizer) => recognizer.dispose(),
+    );
     super.dispose();
   }
 
@@ -148,16 +151,18 @@ class ExpandableTextState extends State<ExpandableText>
 
     final linkText =
         (_expanded ? widget.collapseText : widget.expandText) ?? '';
-    final linkColor = widget.linkColor ??
+    final linkColor =
+        widget.linkColor ??
         widget.linkStyle?.color ??
         Theme.of(context).colorScheme.secondary;
-    final linkTextStyle =
-        effectiveTextStyle!.merge(widget.linkStyle).copyWith(color: linkColor);
+    final linkTextStyle = effectiveTextStyle!
+        .merge(widget.linkStyle)
+        .copyWith(color: linkColor);
 
     final prefixText =
         widget.prefixText != null && widget.prefixText!.isNotEmpty
-            ? '${widget.prefixText} '
-            : '';
+        ? '${widget.prefixText} '
+        : '';
 
     final link = TextSpan(
       children: [
@@ -171,10 +176,7 @@ class ExpandableTextState extends State<ExpandableText>
           TextSpan(
             style: effectiveTextStyle,
             children: <TextSpan>[
-              if (_expanded)
-                TextSpan(
-                  text: ' ',
-                ),
+              if (_expanded) TextSpan(text: ' '),
               TextSpan(
                 text: linkText,
                 style: linkTextStyle,
@@ -193,7 +195,8 @@ class ExpandableTextState extends State<ExpandableText>
 
     final text = _textSegments.isNotEmpty
         ? TextSpan(
-            children: _buildTextSpans(_textSegments, effectiveTextStyle, null))
+            children: _buildTextSpans(_textSegments, effectiveTextStyle, null),
+          )
         : TextSpan(text: widget.text);
 
     final content = TextSpan(
@@ -231,28 +234,29 @@ class ExpandableTextState extends State<ExpandableText>
 
         TextSpan textSpan;
         if (textPainter.didExceedMaxLines) {
-          final position = textPainter.getPositionForOffset(Offset(
-            textSize.width - linkSize.width,
-            textSize.height,
-          ));
+          final position = textPainter.getPositionForOffset(
+            Offset(textSize.width - linkSize.width, textSize.height),
+          );
           final endOffset =
               (textPainter.getOffsetBefore(position.offset) ?? 0) -
-                  prefixText.length;
+              prefixText.length;
 
           final recognizer =
               (_expanded ? widget.collapseOnTextTap : widget.expandOnTextTap)
-                  ? _linkTapGestureRecognizer
-                  : null;
+              ? _linkTapGestureRecognizer
+              : null;
 
           final text = _textSegments.isNotEmpty
               ? TextSpan(
                   children: _buildTextSpans(
-                      _expanded
-                          ? _textSegments
-                          : parseText(
-                              widget.text.substring(0, max(endOffset, 0))),
-                      effectiveTextStyle!,
-                      recognizer),
+                    _expanded
+                        ? _textSegments
+                        : parseText(
+                            widget.text.substring(0, max(endOffset, 0)),
+                          ),
+                    effectiveTextStyle!,
+                    recognizer,
+                  ),
                 )
               : TextSpan(
                   text: _expanded
@@ -263,11 +267,7 @@ class ExpandableTextState extends State<ExpandableText>
 
           textSpan = TextSpan(
             style: effectiveTextStyle,
-            children: <TextSpan>[
-              prefix,
-              text,
-              link,
-            ],
+            children: <TextSpan>[prefix, text, link],
           );
         } else {
           textSpan = content;
@@ -299,9 +299,7 @@ class ExpandableTextState extends State<ExpandableText>
       result = Semantics(
         textDirection: widget.textDirection,
         label: widget.semanticsLabel,
-        child: ExcludeSemantics(
-          child: result,
-        ),
+        child: ExcludeSemantics(child: result),
       );
     }
 
@@ -309,8 +307,9 @@ class ExpandableTextState extends State<ExpandableText>
   }
 
   void _updateText() {
-    _textSegmentsTapGestureRecognizers
-        .forEach((recognizer) => recognizer.dispose());
+    _textSegmentsTapGestureRecognizers.forEach(
+      (recognizer) => recognizer.dispose(),
+    );
     _textSegmentsTapGestureRecognizers.clear();
 
     if (widget.onUrlTap == null &&
@@ -348,8 +347,11 @@ class ExpandableTextState extends State<ExpandableText>
     });
   }
 
-  List<TextSpan> _buildTextSpans(List<TextSegment> segments,
-      TextStyle textStyle, TapGestureRecognizer? textTapRecognizer) {
+  List<TextSpan> _buildTextSpans(
+    List<TextSegment> segments,
+    TextStyle textStyle,
+    TapGestureRecognizer? textTapRecognizer,
+  ) {
     final spans = <TextSpan>[];
 
     var index = 0;
@@ -373,7 +375,11 @@ class ExpandableTextState extends State<ExpandableText>
       }
 
       final span = TextSpan(
-        text: segment.text,
+        text: segment.isUrl
+            ? (widget.buildUrl != null
+                  ? widget.buildUrl!(segment.text)
+                  : segment.text)
+            : segment.text,
         style: style,
         recognizer: recognizer ?? textTapRecognizer,
       );
