@@ -25,6 +25,7 @@ class ExpandableText extends StatefulWidget {
     this.prefixStyle,
     this.onPrefixTap,
     this.urlStyle,
+    this.buildUrlStyle,
     this.onUrlTap,
     this.hashtagStyle,
     this.onHashtagTap,
@@ -57,6 +58,7 @@ class ExpandableText extends StatefulWidget {
   final TextStyle? prefixStyle;
   final VoidCallback? onPrefixTap;
   final TextStyle? urlStyle;
+  final TextStyle? Function(String url)? buildUrlStyle;
   final StringCallback? onUrlTap;
   final TextStyle? hashtagStyle;
   final StringCallback? onHashtagTap;
@@ -356,7 +358,11 @@ class ExpandableTextState extends State<ExpandableText>
       TapGestureRecognizer? recognizer;
 
       if (segment.isUrl && widget.onUrlTap != null) {
-        style = textStyle.merge(widget.urlStyle);
+        if (widget.buildUrlStyle != null) {
+          style = textStyle.merge(widget.buildUrlStyle!(segment.text));
+        } else {
+          style = textStyle.merge(widget.urlStyle);
+        }
         recognizer = _textSegmentsTapGestureRecognizers[index++];
       } else if (segment.isMention && widget.onMentionTap != null) {
         style = textStyle.merge(widget.mentionStyle);
